@@ -1,0 +1,44 @@
+variables:
+  RESOURCE_GROUP: databricksmonitoring
+  LOG_ANALYTICS_LOCATION: "West Europe"
+  RESOURCE_NAME_PREFIX: databricksmonitoring
+  GIT_BRANCH: master
+  DATABRICKS_HOST: https://westeurope.azuredatabricks.net/
+  DATABRICKS_TOKEN: dapi00000000000000000000000000000000
+
+trigger:
+- master
+
+pool:
+  vmImage: 'Ubuntu-16.04'
+
+steps:
+
+- task: AzureCLI@1
+  displayName: Create Azure resources
+  inputs:
+    azureSubscription: ARMConnection
+    scriptPath: before-build.sh
+
+- task: Maven@3
+  displayName: Build Maven
+  inputs:
+    mavenPomFile: 'spark-monitoring/src/pom.xml'
+    mavenOptions: '-Xmx3072m'
+    javaHomeOption: 'JDKVersion'
+    jdkVersionOption: '1.8'
+    jdkArchitectureOption: 'x64'
+    publishJUnitResults: true
+    testResultsFiles: '**/surefire-reports/TEST-*.xml'
+    #Maven command line arguments:
+    # -B: batch mode, reduce output verbosity
+    # -D...: disable verbose output of artifact download information
+    goals: 'package -B -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn'
+
+
+- task: AzureCLI@1
+  displayName: Post build tasks
+  inputs:
+    azureSubscription: ARMConnection
+    scriptPath: after-build.sh
+    addSpnToEnvironment: true
