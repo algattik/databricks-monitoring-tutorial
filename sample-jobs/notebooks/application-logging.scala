@@ -15,7 +15,7 @@ object SumNumbers extends Logging {
 
   def computeSumOfNumbersFromOneTo(value: Long, spark: SparkSession): Long = {
 
-    Log4jConfiguration.configure("/dbfs/log4j.properties")
+    Log4jConfiguration.configure("/dbfs/monitoring-tutorial/log4j.properties")
 
     logTrace("Trace message from StreamingQueryListenerSampleJob")
     logDebug("Debug message from StreamingQueryListenerSampleJob")
