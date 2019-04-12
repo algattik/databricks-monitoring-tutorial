@@ -32,6 +32,7 @@ dbfs cp --overwrite spark-monitoring/src/spark-listeners/scripts/listeners.sh db
 dbfs cp --overwrite spark-monitoring/src/spark-listeners/scripts/metrics.properties dbfs:/databricks/monitoring-staging/metrics.properties
 dbfs cp --overwrite spark-monitoring/src/spark-listeners/target/spark-listeners-1.0-SNAPSHOT.jar dbfs:/databricks/monitoring-staging/spark-listeners-1.0-SNAPSHOT.jar
 dbfs cp --overwrite spark-monitoring/src/spark-listeners-loganalytics/target/spark-listeners-loganalytics-1.0-SNAPSHOT.jar dbfs:/databricks/monitoring-staging/spark-listeners-loganalytics-1.0-SNAPSHOT.jar
+dbfs cp --overwrite configure-log4j-to-logAnalytics.sh dbfs:/databricks/monitoring-staging/configure-log4j-to-logAnalytics.sh
 
 # Create Databricks cluster connected to Log Analytics
 cluster=$(databricks clusters create --json "$(cat << JSON
@@ -52,6 +53,11 @@ cluster=$(databricks clusters create --json "$(cat << JSON
     {
       "dbfs": {
         "destination": "dbfs:/databricks/monitoring-staging/listeners.sh"
+      }
+    },
+    {
+      "dbfs": {
+        "destination": "dbfs:/databricks/monitoring-staging/configure-log4j-to-logAnalytics.sh"
       }
     }
   ],

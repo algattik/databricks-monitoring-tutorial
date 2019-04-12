@@ -2,10 +2,13 @@ variables:
   RESOURCE_GROUP: databricksmonitoring
   LOG_ANALYTICS_LOCATION: "West Europe"
   RESOURCE_NAME_PREFIX: databricksmonitoring
-  GIT_BRANCH: master
-  SPARK_VERSION: 2.4.0
   DATABRICKS_HOST: https://westeurope.azuredatabricks.net/
   DATABRICKS_TOKEN: dapi00000000000000000000000000000000
+  # This workflow has only been tested on this snapshot version of 
+  # https://github.com/mspnp/spark-monitoring.
+  SPARK_MONITORING_GIT_BRANCH: master
+  SPARK_MONITORING_GIT_COMMIT: c8eca83a93acc5b70d89e47061ad90e9a7d5a57a
+  SPARK_VERSION: 2.4.0
 
 trigger:
 - master
