@@ -10,8 +10,8 @@ import org.apache.spark.sql.types.{StringType, StructType, TimestampType}
 
 object SumNumbers extends Logging {
 
-  private final val METRICS_NAMESPACE = "streamingquerylistenersamplejob"
-  private final val COUNTER_NAME = "rowcounter"
+  private final val METRICS_NAMESPACE = "SumNumbers"
+  private final val COUNTER_NAME = "counter1"
 
   def computeSumOfNumbersFromOneTo(value: Long, spark: SparkSession): Long = {
 

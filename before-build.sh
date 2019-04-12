@@ -6,6 +6,9 @@ set -euo pipefail
 # Clone the repository to be tested
 git clone --single-branch --branch $GIT_BRANCH https://github.com/mspnp/spark-monitoring.git
 
+# Patch source for Spark 2.4.0
+sed -ie "s/<spark.version>2.3.1</<spark.version>$SPARK_VERSION</" spark-monitoring/src/pom.xml
+
 # Install Databricks CLI
 sudo apt-get install -y python3-setuptools
 pip3 install wheel

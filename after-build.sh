@@ -77,17 +77,24 @@ dbfs cp --overwrite sample-jobs/log4j.properties dbfs:/monitoring-tutorial/log4j
 for notebook in sample-jobs/notebooks/*.scala; do
 
   notebook_name=$(basename $notebook .scala)
-  databricks runs submit --json "$(cat << JSON
+  notebook_path=/Shared/monitoring-tutorial/$notebook_name
+  run=$(databricks runs submit --json "$(cat << JSON
   {
     "name": "IntegrationTest",
     "existing_cluster_id": "$cluster_id",
     "timeout_seconds": 1200,
     "notebook_task": { 
-      "notebook_path": "/Shared/monitoring-tutorial/$notebook_name"
+      "notebook_path": "$notebook_path"
     }
   }
 JSON
-  )"
+  )")
+
+  # Echo job web page URL to task output to facilitate debugging
+  run_id=$(echo $run | jq .run_id)
+  echo "Running notebook $notebook_path"
+  databricks runs get --run-id "$run_id" | jq -r .run_page_url
+
 
 done
 
