@@ -1,0 +1,20 @@
+apiVersion: 1
+
+datasources:
+  - name: Azure Monitor
+    type: grafana-azure-monitor-datasource
+    orgId: 1
+    typeLogoUrl: public/plugins/grafana-azure-monitor-datasource/img/logo.jpg
+    access: proxy
+    url: /api/datasources/proxy/2
+    isDefault: true
+    jsonData:
+      cloudName: azuremonitor
+      subscriptionId: $SUBSCRIPTION_ID
+      tenantId: $TENANT_ID
+      clientId: $CLIENT_ID
+      logAnalyticsDefaultWorkspace: $WORKSPACE_ID
+      azureLogAnalyticsSameAs: true
+    secureJsonData:
+      clientSecret: $CLIENT_SECRET
+    editable: true

@@ -1,13 +1,10 @@
 variables:
   RESOURCE_GROUP: databricksmonitoring
-  LOG_ANALYTICS_LOCATION: "West Europe"
   RESOURCE_NAME_PREFIX: databricksmonitoring
-  DATABRICKS_HOST: https://westeurope.azuredatabricks.net/
+  DATABRICKS_HOST: https://northeurope.azuredatabricks.net/
   DATABRICKS_TOKEN: dapi00000000000000000000000000000000
-  # This workflow has only been tested on this snapshot version of 
-  # https://github.com/mspnp/spark-monitoring.
-  SPARK_MONITORING_GIT_BRANCH: master
-  SPARK_MONITORING_GIT_COMMIT: c8eca83a93acc5b70d89e47061ad90e9a7d5a57a
+  LOG_ANALYTICS_READER_CLIENT_ID: 00000000-0000-0000-0000-000000000000
+  LOG_ANALYTICS_READER_CLIENT_SECRET: 00000000-0000-0000-0000-000000000000
   SPARK_VERSION: 2.4.0
 
 trigger:
@@ -23,6 +20,7 @@ steps:
   inputs:
     azureSubscription: ARMConnection
     scriptPath: before-build.sh
+    addSpnToEnvironment: true
 
 - task: Maven@3
   displayName: Build Maven
@@ -39,10 +37,14 @@ steps:
     # -D...: disable verbose output of artifact download information
     goals: 'package -B -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn'
 
-
 - task: AzureCLI@1
-  displayName: Post build tasks
+  displayName: Deploy Databricks jobs
   inputs:
     azureSubscription: ARMConnection
-    scriptPath: after-build.sh
-    addSpnToEnvironment: true
+    scriptPath: deploy-databricks-jobs.sh
+
+- task: AzureCLI@1
+  displayName: Deploy Grafana
+  inputs:
+    azureSubscription: ARMConnection
+    scriptPath: deploy-grafana.sh

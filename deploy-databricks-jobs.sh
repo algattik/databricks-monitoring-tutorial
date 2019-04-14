@@ -6,27 +6,6 @@ set -euo pipefail
 # Databricks cluster to be created
 cluster_name="sparkmon$BUILD_BUILDID"
 
-# Log analytics instance created by before-build.sh
-read loganalytics_instance < loganalytics_instance.txt
-
-read tenantId subscriptionId <<< $(az account show --query '{tenantId:tenantId,id:id}' -o tsv)
-
-curl="curl --silent --show-error --fail "
-
-# Get an AAD authentication token for ARM
-# NB: $servicePrincipalId and $servicePrincipalKey passed as env vars
-armToken=$($curl -X POST -v \
-	--data-urlencode "grant_type=client_credentials" \
-	--data-urlencode "client_id=$servicePrincipalId" \
-	--data-urlencode "client_secret=$servicePrincipalKey" \
-	--data-urlencode "resource=https://management.azure.com/" \
-	"https://login.microsoftonline.com/$tenantId/oauth2/token" \
-| jq -r '.token_type + " " + .access_token')
-
-# Get Log Analytics Workspace ID and Key
-wsId=$($curl -X GET -H "Authorization: $armToken" -H "Content-Type: application/json" https://management.azure.com/subscriptions/$subscriptionId/resourcegroups/$RESOURCE_GROUP/providers/Microsoft.OperationalInsights/workspaces/$loganalytics_instance?api-version=2015-11-01-preview | jq -r .properties.customerId)
-wsKey=$($curl -X POST -d '' -H "Authorization: $armToken" -H "Content-Type: application/json" https://management.azure.com/subscriptions/$subscriptionId/resourcegroups/$RESOURCE_GROUP/providers/Microsoft.OperationalInsights/workspaces/$loganalytics_instance/sharedKeys?api-version=2015-11-01-preview | jq -r .primarySharedKey)
-
 # Copy resources to Databricks
 dbfs cp --overwrite spark-monitoring/src/spark-listeners/scripts/listeners.sh dbfs:/databricks/monitoring-staging/listeners.sh
 dbfs cp --overwrite spark-monitoring/src/spark-listeners/scripts/metrics.properties dbfs:/databricks/monitoring-staging/metrics.properties
@@ -35,12 +14,13 @@ dbfs cp --overwrite spark-monitoring/src/spark-listeners-loganalytics/target/spa
 dbfs cp --overwrite configure-log4j-to-logAnalytics.sh dbfs:/databricks/monitoring-staging/configure-log4j-to-logAnalytics.sh
 
 # Create Databricks cluster connected to Log Analytics
-cluster=$(databricks clusters create --json "$(cat << JSON
+cluster_def=$(cat << JSON
 {
   "cluster_name": "$cluster_name",
-  "spark_version": "5.2.x-scala2.11",
+  "spark_version": "5.3.x-scala2.11",
   "node_type_id": "Standard_DS3_v2",
   "spark_conf": {
+    "spark.metrics.namespace": "$cluster_name",
     "spark.extraListeners": "com.databricks.backend.daemon.driver.DBCEventLoggingListener,org.apache.spark.listeners.UnifiedSparkListener",
     "spark.unifiedListener.sink": "org.apache.spark.listeners.sink.loganalytics.LogAnalyticsListenerSink",
     "spark.unifiedListener.logBlockUpdates": "false"
@@ -63,14 +43,14 @@ cluster=$(databricks clusters create --json "$(cat << JSON
   ],
   "spark_env_vars": {
     "PYSPARK_PYTHON": "/databricks/python3/bin/python3",
-    "LOG_ANALYTICS_WORKSPACE_ID": "$wsId",
-    "LOG_ANALYTICS_WORKSPACE_KEY": "$wsKey"
+    "LOG_ANALYTICS_WORKSPACE_ID": "$LOG_ANALYTICS_WORKSPACE_ID",
+    "LOG_ANALYTICS_WORKSPACE_KEY": "$LOG_ANALYTICS_WORKSPACE_KEY"
   },
   "autotermination_minutes": 120
 }
 JSON
-)"
 )
+cluster=$(databricks clusters create --json "$cluster_def")
 
 # Copy and run sample notebooks
 
@@ -84,10 +64,12 @@ for notebook in sample-jobs/notebooks/*.scala; do
 
   notebook_name=$(basename $notebook .scala)
   notebook_path=/Shared/monitoring-tutorial/$notebook_name
-  run=$(databricks runs submit --json "$(cat << JSON
+  job_cluster_spec=$(echo "$cluster_def" | jq ".spark_conf.\"spark.metrics.namespace\" = \"$notebook_name\" | del(.autotermination_minutes) | del(.cluster_name)")
+
+  job=$(databricks jobs create --json "$(cat << JSON
   {
-    "name": "IntegrationTest",
-    "existing_cluster_id": "$cluster_id",
+    "name": "Sample $notebook_name",
+    "new_cluster": $job_cluster_spec,
     "timeout_seconds": 1200,
     "notebook_task": { 
       "notebook_path": "$notebook_path"
@@ -95,6 +77,9 @@ for notebook in sample-jobs/notebooks/*.scala; do
   }
 JSON
   )")
+  job_id=$(echo $job | jq .job_id)
+
+  run=$(databricks jobs run-now --job-id $job_id)
 
   # Echo job web page URL to task output to facilitate debugging
   run_id=$(echo $run | jq .run_id)
